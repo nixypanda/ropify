@@ -9,6 +9,7 @@ from rope.base.project import Project
 from rope.base.pynames import ImportedModule
 from rope.base.resources import File, Folder
 from rope.refactor.move import MoveModule, create_move
+from rope.refactor.occurrences import Finder, Occurrence
 
 
 @click.group()
@@ -71,13 +72,19 @@ def move_module(resource: Path, destination: Path, project: Path, ropefolder: st
 
 
 @cli.command()
-@click.argument("resource", type=click.Path(exists=True, dir_okay=False, path_type=Path))
+@click.argument("symbol_s_filepath", type=click.Path(exists=True, dir_okay=False, path_type=Path))
 @click.argument("offset", type=click.IntRange(min=0))
-@click.argument("destination", type=click.Path(exists=True, dir_okay=False, path_type=Path))
+@click.argument(
+    "destination_file_path", type=click.Path(exists=True, dir_okay=False, path_type=Path)
+)
 @project_option()
 @ropefolder_option()
-def move_symbol_offset(
-    resource: Path, offset: int, destination: Path, project: Path, ropefolder: str | None
+def move_symbol_by_offset(
+    symbol_s_filepath: Path,
+    offset: int,
+    destination_file_path: Path,
+    project: Path,
+    ropefolder: str | None,
 ) -> None:
     """
     Move the definition of a global symbol to another file.
@@ -86,18 +93,60 @@ def move_symbol_offset(
     RESOURCE: The path to the file containing the symbol to move.
     OFFSET: The byte offset of the symbol within the file.
     """
-    move_with_offset(resource, destination, offset, project, ropefolder)
-
-
-def move_with_offset(
-    source: Path, destination: Path, offset: int, project: Path, ropefolder: str | None
-) -> None:
     rope_project = _create_rope_project(project, ropefolder)
 
-    f_source = path_to_resource(rope_project, source)
-    f_dest = path_to_resource(rope_project, destination)
-    assert isinstance(f_source, File) and isinstance(f_dest, File)
-    move = create_move(rope_project, f_source, offset)
+    source_file = path_to_resource(rope_project, symbol_s_filepath)
+    dest_file = path_to_resource(rope_project, destination_file_path)
+    assert isinstance(source_file, File) and isinstance(dest_file, File)
+    move_with_offset(source_file, dest_file, offset, rope_project)
+
+
+def find_definition_in_resource(name: str, resource: File, project: Project) -> Occurrence:
+    finder = Finder(project, name)
+    return next(
+        occ
+        for occ in finder.find_occurrences(resource=resource)
+        if occ.is_defined() or occ.is_written()
+    )
+
+
+@cli.command()
+@click.argument("symbol_s_filepath", type=click.Path(exists=True, dir_okay=False, path_type=Path))
+@click.argument("name", type=click.STRING)
+@click.argument(
+    "destination_file_path", type=click.Path(exists=True, dir_okay=False, path_type=Path)
+)
+@project_option()
+@ropefolder_option()
+def move_symbol_by_name(
+    symbol_s_filepath: Path,
+    name: str,
+    destination_file_path: Path,
+    project: Path,
+    ropefolder: str | None,
+) -> None:
+    """
+    Move the definition of a global symbol to another file.
+
+    \b
+    RESOURCE: The path to the file containing the symbol to move.
+    OFFSET: The byte offset of the symbol within the file.
+    """
+    rope_project = _create_rope_project(project, ropefolder)
+
+    source_file = path_to_resource(rope_project, symbol_s_filepath)
+    dest_file = path_to_resource(rope_project, destination_file_path)
+    assert isinstance(source_file, File) and isinstance(dest_file, File)
+
+    definition_occurrence = find_definition_in_resource(name, source_file, rope_project)
+    move_with_offset(source_file, dest_file, definition_occurrence.offset, rope_project)
+
+
+def move_with_offset(source: File, destination: File, offset: int, rope_project: Project) -> None:
+    # f_source = path_to_resource(rope_project, source)
+    # f_dest = path_to_resource(rope_project, destination)
+    # assert isinstance(f_source, File) and isinstance(f_dest, File)
+    move = create_move(rope_project, source, offset)
 
     symbol_name = move.old_name
     click.echo(f"Moving definition of `{symbol_name}`")
@@ -109,9 +158,9 @@ def move_with_offset(
     symbol_def_source = move.old_pyname.get_definition_location()[0].get_resource()
     click.echo(f"Definition is currently at: {symbol_def_source.path}")
 
-    changes = move.get_changes(f_dest)
+    changes = move.get_changes(destination)
     rope_project.do(changes)
-    click.echo(f"Definition of `{symbol_name}` moved to: {f_dest.path}")
+    click.echo(f"Definition of `{symbol_name}` moved to: {destination.path}")
 
 
 def main() -> None:
