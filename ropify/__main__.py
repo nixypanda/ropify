@@ -1,3 +1,4 @@
+from os import popen
 from pathlib import Path
 from typing import Callable
 
@@ -184,6 +185,38 @@ def move_with_offset(source: File, destination: File, offset: int, rope_project:
     changes = move.get_changes(destination)
     rope_project.do(changes)
     click.echo(f"Definition of `{symbol_name}` moved to: {destination.path}")
+
+
+@cli.command()
+@click.argument("module", type=click.STRING)
+@click.argument("symbol", type=click.STRING)
+def fixup_imports(module: str, symbol: str):
+    pattern = f"{module}.{symbol}"
+    matches = popen(f"rg --files-with-matches {pattern}").read().splitlines()
+
+    for match in matches:
+        prepend_from_import_to_file(match, f"from {module} import {symbol}")
+        replace_fully_qualified_name_with_symbol(match, pattern, symbol)
+
+
+def prepend_from_import_to_file(filename, string):
+    with open(filename) as file:
+        lines = file.readlines()
+
+    lines.insert(0, string + "\n")
+
+    with open(filename, "w") as file:
+        file.writelines(lines)
+
+
+def replace_fully_qualified_name_with_symbol(filename, old_string, new_string):
+    with open(filename) as file:
+        filedata = file.read()
+
+    new_filedata = filedata.replace(old_string, new_string)
+
+    with open(filename, "w") as file:
+        file.write(new_filedata)
 
 
 def main() -> None:
