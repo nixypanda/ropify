@@ -44,49 +44,52 @@ def _create_rope_project(project: Path, ropefolder: str | None) -> Project:
 
 
 @cli.command()
-@click.argument("resource", type=click.Path(exists=True, dir_okay=False, path_type=Path))
-@click.argument("destination", type=click.Path(exists=True, file_okay=False, path_type=Path))
+@click.argument("source_file_path", type=click.Path(exists=True, dir_okay=False, path_type=Path))
+@click.argument("dest_folder_path", type=click.Path(exists=True, file_okay=False, path_type=Path))
 @project_option()
 @ropefolder_option()
-def move_module(resource: Path, destination: Path, project: Path, ropefolder: str | None) -> None:
+def move_module(
+    source_file_path: Path, dest_folder_path: Path, project: Path, ropefolder: str | None
+) -> None:
     """
-    Move a module to another package.
+    Move a module.
 
     \b
-    RESOURCE: The path to the module file.
-    DESTINATION: The path to the destination folder.
+    SOURCE_FILE_PATH: The path to the module file.
+    DEST_FOLDER_PATH: The destination folder path.
     """
-
     rope_project = _create_rope_project(project, ropefolder)
-    m_source = path_to_resource(rope_project, resource)
-    m_dest = path_to_resource(rope_project, destination)
-    assert isinstance(m_source, File) and isinstance(m_dest, Folder)
+    source_file = path_to_resource(rope_project, source_file_path)
+    dest_folder = path_to_resource(rope_project, dest_folder_path)
+    assert isinstance(source_file, File) and isinstance(dest_folder, Folder)
 
-    move = create_move(rope_project, m_source)
+    move = create_move(rope_project, source_file)
     assert isinstance(move, MoveModule)
     click.echo(f"Moving definition of `{move.old_name}`")
-    click.echo(f"Definition is currently at: {m_source.path}")
+    click.echo(f"Definition is currently at: {source_file.path}")
 
-    changes = move.get_changes(m_dest)
+    changes = move.get_changes(dest_folder)
     rope_project.do(changes)
-    click.echo(f"Module `{m_source.path}` moved to: {m_dest.path}")
+    click.echo(f"Module `{source_file.path}` moved to: {dest_folder.path}")
 
 
 @cli.command()
-@click.argument("resource", type=click.Path(exists=True, dir_okay=False, path_type=Path))
+@click.argument("module_file_path", type=click.Path(exists=True, dir_okay=False, path_type=Path))
 @click.argument("new_name", type=click.STRING)
 @project_option()
 @ropefolder_option()
-def rename_module(resource: Path, new_name: str, project: Path, ropefolder: str | None) -> None:
+def rename_module(
+    module_file_path: Path, new_name: str, project: Path, ropefolder: str | None
+) -> None:
     """
     Rename a module.
 
     \b
-    RESOURCE: The path to the module file.
+    MODULE_FILE_PATH: The path to the module file.
     NEW_NAME: The new name of the module.
     """
     rope_project = _create_rope_project(project, ropefolder)
-    source_module = path_to_resource(rope_project, resource)
+    source_module = path_to_resource(rope_project, module_file_path)
     changes = Rename(rope_project, source_module).get_changes(new_name)
     rope_project.do(changes)
 
