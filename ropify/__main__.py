@@ -10,6 +10,7 @@ from rope.base.pynames import ImportedModule
 from rope.base.resources import File, Folder
 from rope.refactor.move import MoveModule, create_move
 from rope.refactor.occurrences import Finder, Occurrence
+from rope.refactor.rename import Rename
 
 
 @click.group()
@@ -69,6 +70,25 @@ def move_module(resource: Path, destination: Path, project: Path, ropefolder: st
     changes = move.get_changes(m_dest)
     rope_project.do(changes)
     click.echo(f"Module `{m_source.path}` moved to: {m_dest.path}")
+
+
+@cli.command()
+@click.argument("resource", type=click.Path(exists=True, dir_okay=False, path_type=Path))
+@click.argument("new_name", type=click.STRING)
+@project_option()
+@ropefolder_option()
+def rename_module(resource: Path, new_name: str, project: Path, ropefolder: str | None) -> None:
+    """
+    Rename a module.
+
+    \b
+    RESOURCE: The path to the module file.
+    NEW_NAME: The new name of the module.
+    """
+    rope_project = _create_rope_project(project, ropefolder)
+    source_module = path_to_resource(rope_project, resource)
+    changes = Rename(rope_project, source_module).get_changes(new_name)
+    rope_project.do(changes)
 
 
 @cli.command()
