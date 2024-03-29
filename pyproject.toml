@@ -10,13 +10,11 @@ readme = "README.md"
 python = "^3.10"
 
 click = "^8.1.7"
-# This revision fixes this issue: https://github.com/python-rope/rope/issues/715
-rope = { git = "https://github.com/python-rope/rope.git", rev = "21e4804" }
+rope = "^1.13.0"
 setuptools = "^68.2.2"
 
 
 [tool.poetry.group.dev.dependencies]
-black = "^23.10.1"
 mypy = "^1.6.1"
 ruff = "^0.1.2"
 
