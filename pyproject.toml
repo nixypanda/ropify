@@ -30,14 +30,17 @@ ignore_missing_imports = true
 
 [tool.ruff.lint]
 select = [
-  "B",  # flake8-bugbear
-  "E",  # pycodestyle
-  "F",  # Pyflakes
-  "I",  # isort
-  "SIM",  # flake8-simplify
-  "UP",  # pyupgrade
+    "B",   # flake8-bugbear
+    "E",   # pycodestyle
+    "F",   # Pyflakes
+    "I",   # isort
+    "SIM", # flake8-simplify
+    "UP",  # pyupgrade
 ]
 
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.ruff]
+line-length = 100
